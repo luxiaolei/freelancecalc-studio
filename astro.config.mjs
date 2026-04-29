@@ -53,7 +53,10 @@ export default defineConfig({
   trailingSlash: config.site.trailing_slash ? "always" : "never",
   image: { service: sharp() },
   vite: { plugins: [tailwindcss()] },
-  fonts: fontsConfig,
+  // Keep the MVP build network-independent. Astro's Google font provider fetches
+  // metadata at build time, which makes CI/agent builds flaky when fonts.google.com
+  // is blocked or rate-limited. CSS fallbacks from theme.json remain in use.
+  fonts: [],
   integrations: [
     react(),
     sitemap(),

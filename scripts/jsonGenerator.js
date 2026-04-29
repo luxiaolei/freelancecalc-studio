@@ -8,6 +8,10 @@ const BLOG_FOLDER = "src/content/blog";
 
 // get data from markdown
 const getData = (folder, groupDepth) => {
+  if (!fs.existsSync(folder)) {
+    return [];
+  }
+
   const getPath = fs.readdirSync(folder);
   const removeIndex = getPath.filter((item) => !item.startsWith("-"));
 

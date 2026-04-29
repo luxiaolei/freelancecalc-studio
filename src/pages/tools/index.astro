@@ -1,0 +1,27 @@
+---
+import Base from "@/layouts/Base.astro";
+import { tools } from "@/data/tools";
+---
+
+<Base title="Freelancer Calculators" description="Free client-side calculators for freelance pricing, project quotes, retainers, fees, and billable-hour planning.">
+  <section class="section-sm">
+    <div class="container">
+      <div class="row justify-center">
+        <div class="lg:col-9 text-center">
+          <p class="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">Freelancer & small business calculators</p>
+          <h1 class="mb-4 text-h2 lg:text-h1">Free calculators for freelance pricing and profitability</h1>
+          <p class="mb-8 text-lg">Estimate rates, project quotes, retainers, platform fees, and meeting costs with transparent formulas and editable assumptions. No login, no saved personal data.</p>
+        </div>
+      </div>
+      <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {tools.map((tool) => (
+          <a class="rounded-2xl border border-border bg-body p-6 shadow-sm transition hover:-translate-y-1 hover:border-primary" href={`/tools/${tool.slug}`}>
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">{tool.intent}</p>
+            <h2 class="mb-3 text-h5">{tool.title}</h2>
+            <p class="text-sm">{tool.description}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>

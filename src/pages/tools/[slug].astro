@@ -1,0 +1,74 @@
+---
+import Base from "@/layouts/Base.astro";
+import ToolCalculator from "@/components/ToolCalculator";
+import { tools, toolBySlug } from "@/data/tools";
+
+export function getStaticPaths() {
+  return tools.map((tool) => ({ params: { slug: tool.slug } }));
+}
+
+const { slug } = Astro.params;
+const tool = toolBySlug.get(slug as string);
+if (!tool) throw new Error(`Unknown tool: ${slug}`);
+const relatedTools = tool.related.map((relatedSlug) => toolBySlug.get(relatedSlug)).filter(Boolean);
+---
+
+<Base title={tool.title} description={tool.description}>
+  <section class="section-sm">
+    <div class="container">
+      <nav class="mb-6 text-sm">
+        <a href="/" class="text-primary">Home</a>
+        <span class="mx-2">/</span>
+        <a href="/tools" class="text-primary">Tools</a>
+        <span class="mx-2">/</span>
+        <span>{tool.title}</span>
+      </nav>
+      <div class="row justify-center">
+        <div class="lg:col-9">
+          <p class="mb-3 text-sm font-semibold uppercase tracking-wide text-primary">Freelancer pricing calculator</p>
+          <h1 class="mb-4 text-h2 lg:text-h1">{tool.title}</h1>
+          <p class="mb-8 text-lg">{tool.description}</p>
+          <ToolCalculator slug={tool.slug} client:load />
+
+          <div class="content mt-10">
+            <h2>Formula</h2>
+            <div class="not-prose rounded-xl border border-border bg-light p-5 dark:bg-darkmode-light">
+              <code>{tool.formula}</code>
+            </div>
+
+            <h2>Assumptions</h2>
+            <ul>
+              {tool.assumptions.map((assumption) => <li>{assumption}</li>)}
+            </ul>
+
+            <h2>Example calculation</h2>
+            <p>{tool.example}</p>
+
+            <h2>Important disclaimer</h2>
+            <p>{tool.disclaimer}</p>
+
+            <h2>FAQ</h2>
+            {tool.faqs.map((faq) => (
+              <section class="mb-5 rounded-xl border border-border p-5">
+                <h3 class="mb-2 text-h5">{faq.question}</h3>
+                <p>{faq.answer}</p>
+              </section>
+            ))}
+          </div>
+
+          <section class="mt-10 rounded-2xl bg-gradient p-6">
+            <h2 class="mb-4 text-h3">Related freelancer tools</h2>
+            <div class="grid gap-4 md:grid-cols-3">
+              {relatedTools.map((related) => related && (
+                <a class="rounded-xl border border-border bg-body p-4 transition hover:border-primary" href={`/tools/${related.slug}`}>
+                  <h3 class="mb-2 text-h6">{related.title}</h3>
+                  <p class="text-sm">{related.description}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

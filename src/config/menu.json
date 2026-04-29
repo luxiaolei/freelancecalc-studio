@@ -5,53 +5,38 @@
       "url": "/"
     },
     {
+      "name": "Tools",
+      "url": "/tools"
+    },
+    {
       "name": "About",
       "url": "/about"
     },
     {
-      "name": "Elements",
-      "url": "/elements"
-    },
-    {
-      "name": "Pages",
-      "url": "",
-      "hasChildren": true,
-      "children": [
-        {
-          "name": "Contact",
-          "url": "/contact"
-        },
-        {
-          "name": "Blog",
-          "url": "/blog"
-        },
-        {
-          "name": "Authors",
-          "url": "/authors"
-        },
-        {
-          "name": "Categories",
-          "url": "/categories"
-        },
-        {
-          "name": "Tags",
-          "url": "/tags"
-        },
-        {
-          "name": "404 Page",
-          "url": "/404"
-        }
-      ]
+      "name": "Contact",
+      "url": "/contact"
     }
   ],
   "footer": [
     {
-      "name": "Elements",
-      "url": "/elements"
+      "name": "Tools",
+      "url": "/tools"
     },
     {
-      "name": "Privacy Policy",
+      "name": "Privacy",
       "url": "/privacy-policy"
+    },
+    {
+      "name": "Terms",
+      "url": "/terms"
+    },
+    {
+      "name": "Disclosure",
+      "url": "/disclosure"
+    },
+    {
+      "name": "Contact",
+      "url": "/contact"
     }
   ]
 }
