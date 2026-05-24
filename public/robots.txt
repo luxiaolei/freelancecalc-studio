@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
 
+Sitemap: https://freelancecalc-studio.pages.dev/sitemap.xml
+
 Disallow: /api/*

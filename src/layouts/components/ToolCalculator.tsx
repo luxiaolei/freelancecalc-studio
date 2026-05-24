@@ -7,6 +7,7 @@ type Result = {
   label: string;
   value: string;
   secondary?: string;
+  warning?: string;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -21,51 +22,142 @@ function pct(value: number) {
   return `${numberFmt.format(value)}%`;
 }
 
+function clamp(val: number, min: number): number {
+  if (Number.isNaN(val) || !Number.isFinite(val)) return min;
+  return Math.max(min, val);
+}
+
 function calculate(tool: Tool, values: Values): Result {
   switch (tool.calculator) {
     case "hourlySalary": {
-      const workingWeeks = Math.max(0, 52 - values.weeksOff);
-      const annual = values.hourlyRate * values.billableHoursPerWeek * workingWeeks;
-      return { label: "Estimated annual gross revenue", value: money.format(annual), secondary: `${numberFmt.format(workingWeeks)} working weeks/year` };
+      const hourlyRate = clamp(values.hourlyRate, 0);
+      const billableHours = clamp(values.billableHoursPerWeek, 0);
+      const weeksOff = clamp(values.weeksOff, 0);
+      const workingWeeks = Math.min(52, Math.max(0, 52 - weeksOff));
+      const annual = hourlyRate * billableHours * workingWeeks;
+      return {
+        label: "Estimated annual gross revenue",
+        value: money.format(annual),
+        secondary: `${numberFmt.format(workingWeeks)} working weeks/year`,
+      };
     }
     case "dayRate": {
-      const hourly = values.hoursPerDay > 0 ? values.dayRate / values.hoursPerDay : 0;
-      const weekly = values.dayRate * values.daysPerWeek;
-      return { label: "Hourly equivalent", value: money.format(hourly), secondary: `${money.format(weekly)} weekly gross at ${numberFmt.format(values.daysPerWeek)} days/week` };
+      const dayRate = clamp(values.dayRate, 0);
+      const hoursPerDay = clamp(values.hoursPerDay, 0);
+      const daysPerWeek = clamp(values.daysPerWeek, 0);
+      const hourly = hoursPerDay > 0 ? dayRate / hoursPerDay : 0;
+      const weekly = dayRate * daysPerWeek;
+      return {
+        label: "Hourly equivalent",
+        value: money.format(hourly),
+        secondary: `${money.format(weekly)} weekly gross at ${numberFmt.format(daysPerWeek)} days/week`,
+      };
     }
     case "takeHome": {
-      const totalReserve = (values.taxReserve + values.expenseReserve + values.platformFee) / 100;
-      const gross = totalReserve < 1 ? values.targetTakeHome / (1 - totalReserve) : 0;
-      return { label: "Required gross hourly rate", value: money.format(gross), secondary: `Total reserve: ${pct(totalReserve * 100)}` };
+      const targetTakeHome = clamp(values.targetTakeHome, 0);
+      const taxReserve = clamp(values.taxReserve, 0);
+      const expenseReserve = clamp(values.expenseReserve, 0);
+      const platformFee = clamp(values.platformFee, 0);
+      const totalReserve = (taxReserve + expenseReserve + platformFee) / 100;
+      if (totalReserve >= 1) {
+        return {
+          label: "Required gross hourly rate",
+          value: "N/A",
+          secondary: `Total reserve ${pct(totalReserve * 100)} — must be under 100% to calculate a gross rate.`,
+        };
+      }
+      const gross = targetTakeHome / (1 - totalReserve);
+      return {
+        label: "Required gross hourly rate",
+        value: money.format(gross),
+        secondary: `Total reserve: ${pct(totalReserve * 100)}`,
+      };
     }
     case "projectQuote": {
-      const quote = values.hours * values.hourlyRate * (1 + values.contingency / 100) + values.expenses;
-      return { label: "Estimated project quote", value: money.format(quote), secondary: `${numberFmt.format(values.hours)} hours with ${pct(values.contingency)} contingency` };
+      const hours = clamp(values.hours, 0);
+      const hourlyRate = clamp(values.hourlyRate, 0);
+      const contingency = clamp(values.contingency, 0);
+      const expenses = clamp(values.expenses, 0);
+      const quote = hours * hourlyRate * (1 + contingency / 100) + expenses;
+      return {
+        label: "Estimated project quote",
+        value: money.format(quote),
+        secondary: `${numberFmt.format(hours)} hours with ${pct(contingency)} contingency`,
+      };
     }
     case "retainer": {
-      const retainer = values.includedHours * values.hourlyRate * (1 + values.availabilityPremium / 100);
-      return { label: "Suggested monthly retainer", value: money.format(retainer), secondary: `${numberFmt.format(values.includedHours)} included hours/month` };
+      const includedHours = clamp(values.includedHours, 0);
+      const hourlyRate = clamp(values.hourlyRate, 0);
+      const premium = clamp(values.availabilityPremium, 0);
+      const retainer = includedHours * hourlyRate * (1 + premium / 100);
+      return {
+        label: "Suggested monthly retainer",
+        value: money.format(retainer),
+        secondary: `${numberFmt.format(includedHours)} included hours/month`,
+      };
     }
     case "breakEven": {
-      const required = (values.monthlyExpenses + values.targetOwnerPay) / values.hourlyRate;
-      const utilization = (required / values.availableHours) * 100;
-      return { label: "Break-even billable hours/month", value: `${numberFmt.format(required)} hours`, secondary: `${pct(utilization)} utilization of available work hours` };
+      const monthlyExpenses = clamp(values.monthlyExpenses, 0);
+      const targetOwnerPay = clamp(values.targetOwnerPay, 0);
+      const hourlyRate = clamp(values.hourlyRate, 0);
+      const availableHours = clamp(values.availableHours, 1);
+      if (hourlyRate === 0) {
+        return {
+          label: "Break-even billable hours/month",
+          value: "N/A",
+          secondary: "Hourly rate must be greater than $0 to calculate break-even hours.",
+        };
+      }
+      const required = (monthlyExpenses + targetOwnerPay) / hourlyRate;
+      const utilization = (required / availableHours) * 100;
+      return {
+        label: "Break-even billable hours/month",
+        value: `${numberFmt.format(required)} hours`,
+        secondary: `${pct(utilization)} utilization of available work hours`,
+      };
     }
     case "lateFee": {
-      const fee = values.invoiceAmount * (values.monthlyFeeRate / 100) * (values.daysLate / 30);
-      return { label: "Estimated late fee", value: money.format(fee), secondary: `${numberFmt.format(values.daysLate)} days late at ${pct(values.monthlyFeeRate)} monthly` };
+      const invoiceAmount = clamp(values.invoiceAmount, 0);
+      const monthlyFeeRate = clamp(values.monthlyFeeRate, 0);
+      const daysLate = clamp(values.daysLate, 0);
+      const fee = invoiceAmount * (monthlyFeeRate / 100) * (daysLate / 30);
+      return {
+        label: "Estimated late fee",
+        value: money.format(fee),
+        secondary: `${numberFmt.format(daysLate)} days late at ${pct(monthlyFeeRate)} monthly`,
+      };
     }
     case "processingFee": {
-      const fee = values.amount * (values.percentFee / 100) + values.fixedFee;
-      return { label: "Estimated processing fee", value: money.format(fee), secondary: `Net before other costs: ${money.format(values.amount - fee)}` };
+      const amount = clamp(values.amount, 0);
+      const percentFee = clamp(values.percentFee, 0);
+      const fixedFee = clamp(values.fixedFee, 0);
+      const fee = amount * (percentFee / 100) + fixedFee;
+      return {
+        label: "Estimated processing fee",
+        value: money.format(fee),
+        secondary: `Net before other costs: ${money.format(amount - fee)}`,
+      };
     }
     case "platformFee": {
-      const fee = values.grossAmount * (values.feePercent / 100);
-      return { label: "Estimated service fee", value: money.format(fee), secondary: `Net before tax/other costs: ${money.format(values.grossAmount - fee)}` };
+      const grossAmount = clamp(values.grossAmount, 0);
+      const feePercent = clamp(values.feePercent, 0);
+      const fee = grossAmount * (feePercent / 100);
+      return {
+        label: "Estimated service fee",
+        value: money.format(fee),
+        secondary: `Net before tax/other costs: ${money.format(grossAmount - fee)}`,
+      };
     }
     case "meetingCost": {
-      const cost = values.participants * (values.durationMinutes / 60) * values.hourlyRate;
-      return { label: "Estimated meeting cost", value: money.format(cost), secondary: `${numberFmt.format(values.participants)} participants × ${numberFmt.format(values.durationMinutes)} minutes` };
+      const participants = clamp(values.participants, 0);
+      const durationMinutes = clamp(values.durationMinutes, 0);
+      const hourlyRate = clamp(values.hourlyRate, 0);
+      const cost = participants * (durationMinutes / 60) * hourlyRate;
+      return {
+        label: "Estimated meeting cost",
+        value: money.format(cost),
+        secondary: `${numberFmt.format(participants)} participants × ${numberFmt.format(durationMinutes)} minutes`,
+      };
     }
     default:
       return { label: "Result", value: "Not available" };
@@ -112,23 +204,34 @@ export default function ToolCalculator({ slug }: { slug: string }) {
   return (
     <div className="rounded-2xl border border-border bg-body p-6 shadow-sm">
       <div className="grid gap-4 md:grid-cols-2">
-        {tool.inputs.map((input) => (
-          <label className="block" key={input.key}>
-            <span className="mb-2 block text-sm font-semibold text-dark dark:text-white">{input.label}</span>
-            <div className="flex rounded-lg border border-border bg-light dark:bg-darkmode-light">
-              {input.suffix === "$" && <span className="px-3 py-3 text-text">$</span>}
-              <input
-                className="w-full bg-transparent px-3 py-3 outline-none"
-                min={input.min}
-                step={input.step ?? 1}
-                type="number"
-                value={values[input.key] ?? 0}
-                onChange={(event) => setValues((current) => ({ ...current, [input.key]: Number(event.target.value) }))}
-              />
-              {input.suffix && input.suffix !== "$" && <span className="px-3 py-3 text-text">{input.suffix}</span>}
-            </div>
-          </label>
-        ))}
+        {tool.inputs.map((input) => {
+          const min = input.min ?? 0;
+          return (
+            <label className="block" key={input.key}>
+              <span className="mb-2 block text-sm font-semibold text-dark dark:text-white">{input.label}</span>
+              <div className="flex rounded-lg border border-border bg-light dark:bg-darkmode-light">
+                {input.suffix === "$" && <span className="px-3 py-3 text-text">$</span>}
+                <input
+                  className="w-full bg-transparent px-3 py-3 outline-none"
+                  min={min}
+                  step={input.step ?? 1}
+                  type="number"
+                  value={values[input.key] ?? min}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    const parsed = Number(raw);
+                    if (raw === "" || Number.isNaN(parsed)) {
+                      setValues((current) => ({ ...current, [input.key]: min }));
+                    } else {
+                      setValues((current) => ({ ...current, [input.key]: parsed }));
+                    }
+                  }}
+                />
+                {input.suffix && input.suffix !== "$" && <span className="px-3 py-3 text-text">{input.suffix}</span>}
+              </div>
+            </label>
+          );
+        })}
       </div>
 
       <div className="mt-6 rounded-xl bg-theme-light p-5 dark:bg-darkmode-theme-light">
